@@ -25,6 +25,7 @@ import enum
 import math
 import re
 import sys
+from datetime import datetime
 from ipaddress import IPv4Address
 
 from construct import (
@@ -471,6 +472,16 @@ def to_case_dict(value, case):
 
     elif isinstance(value, bytes):
         return value.hex()
+
+    if isinstance(value, datetime):
+        if value.utcoffset():
+            time_zone_offset = int(0x40 + value.utcoffset().total_seconds() / (60 * 15))
+        else:
+            time_zone_offset = 0x40
+        seconds = (value.replace(tzinfo=None) - datetime(2000, 1, 1)).total_seconds()
+        tai_seconds = math.floor(seconds)
+        subsecond = round((seconds - int(seconds)) * 256)
+        return {"taiSeconds": tai_seconds, "timeZoneOffset": time_zone_offset, "subsecond": subsecond}
 
     return value
 

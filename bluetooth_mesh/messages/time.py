@@ -140,9 +140,9 @@ class TimeAdapter(Adapter):
 
         return Container(
             date=recv_date,
-            tai_utc_delta=mesh_tai_utc_delta_to_timedelta(obj["tai_utc_delta"]),
+            tai_utc_delta=obj["tai_utc_delta"],
             time_authority=bool(obj["time_authority"]),
-            uncertainty=timedelta(milliseconds=(obj["uncertainty"] * 10))
+            uncertainty=obj["uncertainty"]
         )
 
     def _encode(self, obj, context, path):
@@ -152,8 +152,8 @@ class TimeAdapter(Adapter):
         return Container(
             tai_seconds=int(total_time),
             subsecond=seconds_to_subsecond(total_time),
-            uncertainty=int((obj["uncertainty"].total_seconds() * 100)),
-            tai_utc_delta=timedelta_to_mesh_tai_utc_delta(obj["tai_utc_delta"]),
+            uncertainty=obj["uncertainty"],
+            tai_utc_delta=obj["tai_utc_delta"],
             time_authority=bool(obj["time_authority"]),
             time_zone_offset=timedelta_to_mesh_time_zone_offset(passed_time.utcoffset())
         )

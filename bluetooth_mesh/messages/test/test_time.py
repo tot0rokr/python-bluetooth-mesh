@@ -49,8 +49,8 @@ valid = [
                 0x2667f7bd + MESH_UNIX_EPOCH_DIFF + subsecond_to_seconds(0x1A) + mesh_time_zone_offset_to_timedelta(
                     0x48).total_seconds(),
                 timezone(mesh_time_zone_offset_to_timedelta(0x48))),
-            uncertainty=timedelta(milliseconds=(0xB2 * 10)),
-            tai_utc_delta=mesh_tai_utc_delta_to_timedelta(0x0248 >> 1),
+            uncertainty=0xB2,
+            tai_utc_delta=(0x0248 >> 1),
             time_authority=True,
         ),
         id="TIME_SET"
@@ -63,11 +63,22 @@ valid = [
                 0x2667f7bd + MESH_UNIX_EPOCH_DIFF + subsecond_to_seconds(0x1A) + mesh_time_zone_offset_to_timedelta(
                     0x48).total_seconds(),
                 timezone(mesh_time_zone_offset_to_timedelta(0x48))),
-            uncertainty=timedelta(milliseconds=(0xB2 * 10)),
-            tai_utc_delta=mesh_tai_utc_delta_to_timedelta(0x0248 >> 1),
+            uncertainty=0xB2,
+            tai_utc_delta=(0x0248 >> 1),
             time_authority=True,
         ),
         id="TIME_STATUS"
+    ),
+    pytest.param(
+        b']\x8e\xa9(*\x00Y\x05I\x02H',
+        TimeOpcode.TIME_STATUS,
+        dict(
+            date=datetime(2022, 5, 31, 14, 25, 18, 347656, tzinfo=timezone(timedelta(seconds=7200))),
+            uncertainty=5,
+            tai_utc_delta=0x124,
+            time_authority=True,
+        ),
+        id="TIME_STATUS_1"
     ),
     pytest.param(
         bytes.fromhex("823b"),

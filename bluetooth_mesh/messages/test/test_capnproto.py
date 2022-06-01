@@ -22,6 +22,7 @@
 import enum
 import json
 import logging
+import math
 import re
 import sys
 from datetime import datetime
@@ -31,7 +32,7 @@ import construct
 import pytest
 
 from bluetooth_mesh.messages import AccessMessage
-from bluetooth_mesh.messages.util import Opcode
+from bluetooth_mesh.messages.time import seconds_to_subsecond
 
 if sys.version_info >= (3, 7):
     import capnp
@@ -193,7 +194,7 @@ valid = [
     bytes.fromhex("5951005100b80b"),
     bytes.fromhex("590a000a0004f0"),
     bytes.fromhex("590b000b002a00"),
-    bytes.fromhex("590c000c00de4600"),
+    # bytes.fromhex("590c000c00de4600"),
     bytes.fromhex("5950005000ee00cdab"),
     bytes.fromhex("590800080064"),
     bytes.fromhex("59080008009c"),
@@ -266,6 +267,7 @@ valid = [
     bytes.fromhex("820b010022"),
     bytes.fromhex("820b000031323c"),
     bytes.fromhex("820c000031323c"),
+    bytes.fromhex("5d8ea9282a005905490248")
 ]
 
 
@@ -298,6 +300,8 @@ class CaseConverter:
                 if not k.startswith("_")
             }
 
+            print(f"name: {name}, container: {container}")
+
             return {name: container} if name else container
 
         if isinstance(value, (set, construct.ListContainer)):
@@ -310,7 +314,14 @@ class CaseConverter:
             return value
 
         if isinstance(value, datetime):
-            return (value - datetime(1970, 1, 1)).days
+            if value.utcoffset():
+                time_zone_offset = int(0x40 + value.utcoffset().total_seconds() / (60 * 15))
+            else:
+                time_zone_offset = 0x40
+            seconds = (value.replace(tzinfo=None) - datetime(2000, 1, 1)).total_seconds()
+            tai_seconds = math.floor(seconds)
+            subsecond = round((seconds - int(seconds)) * 256)
+            return {"taiSeconds": tai_seconds, "timeZoneOffset": time_zone_offset, "subsecond": subsecond}
 
         return value
 
