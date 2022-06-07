@@ -25,6 +25,7 @@ import enum
 import math
 import re
 import sys
+from datetime import datetime, date, timedelta
 from ipaddress import IPv4Address
 
 from construct import (
@@ -452,10 +453,8 @@ def camelcase(field_name):
 
 
 def snakecase(camel_input):
-    words = re.findall(
-        r"[A-Z]?[a-z\d]+|[A-Z]{2,}(?=[A-Z][a-z]|\d|\W|$)|\d+", camel_input
-    )
-    return "_".join(map(str.lower, words))
+    pattern = re.compile(r"(?<!^)(?=[A-Z])")
+    return pattern.sub("_", camel_input).lower()
 
 
 def to_case_dict(value, case):
@@ -465,9 +464,11 @@ def to_case_dict(value, case):
             for k, v in value.items()
             if not k.startswith("_")
         }
-        return {value["_name"]: new_dict} if "_name" in value else new_dict
 
-    elif isinstance(value, list):
+        name = getattr(value, "_name", None)
+        return {name: new_dict} if name else new_dict
+
+    elif isinstance(value, (set, list)):
         return [to_case_dict(i, case) for i in value]
 
     elif isinstance(value, enum.Enum):
@@ -475,6 +476,15 @@ def to_case_dict(value, case):
 
     elif isinstance(value, bytes):
         return value.hex()
+
+    if isinstance(value, datetime):
+        return dict(year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second, microsecond=value.microsecond)
+
+    if isinstance(value, date):
+        return dict(year=value.year, month=value.month, day=value.day)
+
+    if isinstance(value, timedelta):
+        return value.total_seconds()
 
     return value
 

@@ -32,6 +32,9 @@ from construct import (
     Container,
     Flag,
     Int8ul,
+    Int16ul,
+    Int24ul,
+    Float64l,
     Padding,
     StopIf,
     Struct,
@@ -125,6 +128,22 @@ Time = NamedSelect(
 
 
 class TimeAdapter(Adapter):
+    _subcon = Struct(
+        "date" / Struct(
+            "year"/ Int16ul,
+            "month" / Int8ul,
+            "day" / Int8ul,
+            "hour" / Int8ul,
+            "minute" / Int8ul,
+            "second" / Int8ul,
+            "microsecond" / Int24ul,
+            "time_zone_offset" / Int8ul,  # TODO: ?
+        ),
+        "tai_utc_delta" / Int24ul,  #TODO: timedelta, 15min adapter
+        "time_authority" / Flag,
+        "uncertainty" / Float64l,  # TODO: timedelta, centisecond adapter
+    )
+
     def _decode(self, obj, context, path):
         if obj["tai_seconds"] == 0:
             return Container(
@@ -147,6 +166,26 @@ class TimeAdapter(Adapter):
 
     def _encode(self, obj, context, path):
         passed_time: datetime = obj["date"]
+
+        if isinstance(passed_time, dict):
+            time_zone = mesh_time_zone_offset_to_timedelta(passed_time["time_zone_offset"])
+            passed_time = datetime(
+                year=passed_time["year"],
+                month=passed_time["month"],
+                day=passed_time["day"],
+                hour=passed_time["hour"],
+                minute=passed_time["minute"],
+                second=passed_time["second"],
+                microsecond=passed_time["microsecond"],
+                tzinfo=timezone(time_zone)
+            )
+
+        if isinstance(obj["uncertainty"], float):
+            obj["uncertainty"] = timedelta(seconds=obj["uncertainty"])
+
+        if isinstance(obj["tai_utc_delta"], int):
+            obj["tai_utc_delta"] = timedelta(seconds=obj["tai_utc_delta"])
+
         total_time = passed_time.timestamp() - MESH_UNIX_EPOCH_DIFF - passed_time.utcoffset().total_seconds()
 
         return Container(
