@@ -191,7 +191,7 @@ class TimeExponential8Validator(Adapter):
 
 class DateAdapter(Adapter):
     _subcon = Struct(
-        "year"/ Int16ul,
+        "year" / Int16ul,
         "month" / Int8ul,
         "day" / Int8ul,
     )
@@ -212,7 +212,6 @@ class DateAdapter(Adapter):
 
         if isinstance(obj, date):
             return (obj - self.EPOCH).days
-
 
         return obj
 

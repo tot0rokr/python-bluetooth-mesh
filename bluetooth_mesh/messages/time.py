@@ -21,6 +21,7 @@
 #
 import calendar
 import enum
+import math
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -28,18 +29,16 @@ from construct import (
     Adapter,
     BitsInteger,
     BytesInteger,
-    Construct,
     Container,
     Flag,
+    Float32l,
     Int8ul,
+    Int16sl,
     Int16ul,
     Int24ul,
-    Float64l,
     Padding,
     StopIf,
     Struct,
-    stream_read,
-    stream_write,
     this,
 )
 
@@ -127,21 +126,60 @@ Time = NamedSelect(
 )
 
 
+class TimeZoneOffsetAdapter(Adapter):
+    """
+    Time Zone Offset is described in minutes, mesh format in 15-minute increments.
+    """
+
+    def _decode(self, obj, context, path):
+        return (obj - 0x40) * 15
+
+    def _encode(self, obj, context, path):
+        assert ((obj % 15) == 0)
+        return 0x40 + (obj // 15)
+
+
+class TAIUTCDeltaAdapter(Adapter):
+    """
+    TAI-UTC Delta is described in seconds encoded in signed integer, mesh format in singed integer with different offset
+    """
+
+    def _decode(self, obj, context, path):
+        return obj - 0xFF
+
+    def _encode(self, obj, context, path):
+        assert (obj > -255)
+        return obj + 0xFF
+
+
+class UncertaintyAdapter(Adapter):
+    """
+    TAI-UTC Delta is described in seconds encoded in float, mesh format is in centiseconds
+    """
+
+    def _decode(self, obj, context, path):
+        return round(obj / 100, 2)
+
+    def _encode(self, obj, context, path):
+        assert (obj < 2.6)
+        return math.floor(obj * 100)
+
+
 class TimeAdapter(Adapter):
     _subcon = Struct(
         "date" / Struct(
-            "year"/ Int16ul,
+            "year" / Int16ul,
             "month" / Int8ul,
             "day" / Int8ul,
             "hour" / Int8ul,
             "minute" / Int8ul,
             "second" / Int8ul,
             "microsecond" / Int24ul,
-            "time_zone_offset" / Int8ul,  # TODO: ?
+            "time_zone_offset" / TimeZoneOffsetAdapter(Int16sl),
         ),
-        "tai_utc_delta" / Int24ul,  #TODO: timedelta, 15min adapter
+        "tai_utc_delta" / TAIUTCDeltaAdapter(Int16sl),
         "time_authority" / Flag,
-        "uncertainty" / Float64l,  # TODO: timedelta, centisecond adapter
+        "uncertainty" / UncertaintyAdapter(Float32l),
     )
 
     def _decode(self, obj, context, path):
@@ -167,8 +205,8 @@ class TimeAdapter(Adapter):
     def _encode(self, obj, context, path):
         passed_time: datetime = obj["date"]
 
-        if isinstance(passed_time, dict):
-            time_zone = mesh_time_zone_offset_to_timedelta(passed_time["time_zone_offset"])
+        if isinstance(passed_time, dict):  # capnproto message
+            time_zone = timedelta(minutes=passed_time["time_zone_offset"])
             passed_time = datetime(
                 year=passed_time["year"],
                 month=passed_time["month"],

@@ -25,7 +25,7 @@ import enum
 import math
 import re
 import sys
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from ipaddress import IPv4Address
 
 from construct import (
@@ -290,7 +290,7 @@ class DefaultCountValidator(Adapter):
         self.unknown_value = unknown_value
 
     def _decode(self, obj, content, path):
-        if self.unknown_value and obj == (256**self.subcon.length) - 1:
+        if self.unknown_value and obj == (256 ** self.subcon.length) - 1:
             return float(sys.float_info.max)
         else:
             return (
@@ -301,7 +301,7 @@ class DefaultCountValidator(Adapter):
 
     def _encode(self, obj, content, path):
         if self.unknown_value and obj == float(sys.float_info.max):
-            return (256**self.subcon.length) - 1
+            return (256 ** self.subcon.length) - 1
         else:
             return round(obj / self.resolution)
 
@@ -478,7 +478,16 @@ def to_case_dict(value, case):
         return value.hex()
 
     if isinstance(value, datetime):
-        return dict(year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second, microsecond=value.microsecond)
+        return dict(
+            year=value.year,
+            month=value.month,
+            day=value.day,
+            hour=value.hour,
+            minute=value.minute,
+            second=value.second,
+            microsecond=value.microsecond,
+            timeZoneOffset=(value.utcoffset().total_seconds() / 60),
+        )
 
     if isinstance(value, date):
         return dict(year=value.year, month=value.month, day=value.day)
